@@ -1,76 +1,101 @@
 #!/usr/bin/env python3
-"""Original vector artwork for the Linux RP series. Standard pycairo only."""
+"""Original editorial/terminal cards. Rebuild: python3 assets/create_art.py."""
 from pathlib import Path
-import cairo,math,random
+import cairo, math
 P=Path(__file__).parent
-BG='#11101B';INK='#F5EFEB';MUTED='#AEA5B9';ORANGE='#B7A5F5';LILAC='#FFB076';TEAL='#8FD0C4'
-def col(c,h):c.set_source_rgb(*(int(h[i:i+2],16)/255 for i in (1,3,5)))
-def rect(c,x,y,w,h,co):col(c,co);c.rectangle(x,y,w,h);c.fill()
-def circle(c,x,y,r,co):col(c,co);c.arc(x,y,r,0,math.tau);c.fill()
-def line(c,pts,co,w=1):
- col(c,co);c.set_line_width(w);c.move_to(*pts[0]);[c.line_to(*p) for p in pts[1:]];c.stroke()
-def poly(c,pts,co):
- col(c,co);c.move_to(*pts[0]);[c.line_to(*p) for p in pts[1:]];c.close_path();c.fill()
-def text(c,s,x,y,size,co=INK,font='Nimbus Sans',bold=False):
- c.select_font_face(font,0,cairo.FONT_WEIGHT_BOLD if bold else cairo.FONT_WEIGHT_NORMAL);c.set_font_size(size);col(c,co);c.move_to(x,y);c.show_text(s)
-def pixelpalm(c,x,y,size=1):
- c.save();c.translate(x,y);c.scale(size,size)
- for i in range(14):rect(c,i//3*3,-i*8,8,10,'#141421')
- for side in [-1,1]:
-  for k in range(6):rect(c,12+side*k*11,-116+(k*k)//2,15,6,'#141421')
-  for k in range(5):rect(c,12+side*k*8,-112+k*8,12,6,'#141421')
- c.restore()
-def scene(c):
- rect(c,700,75,660,506,'#24263F');circle(c,1160,167,54,'#B7A5F5')
- random.seed(14)
- for _ in range(65):rect(c,random.randrange(710,1355),random.randrange(90,265),2,2,'#6F6C93')
- # Fictional city, built as vector pixel art for the series.
- for x,y,w,h,co in [(713,284,108,152,'#34334E'),(831,236,116,205,'#41415C'),(957,304,97,140,'#36354C'),(1062,259,116,192,'#46445D'),(1190,227,157,227,'#36374F')]:
-  rect(c,x,y,w,h,co);rect(c,x+w-12,y,12,h,'#282A42')
-  for yy in range(y+13,y+h-12,20):
-   for xx in range(x+12,x+w-15,19):rect(c,xx,yy,7,10,'#B99787' if random.random()>.54 else '#676580')
-  rect(c,x-3,y-4,w+6,5,'#666078')
- rect(c,700,443,660,138,'#181B2A')
- poly(c,[(1022,435),(1048,435),(1286,581),(784,581)],'#39394C')
- line(c,[(1022,438),(780,581)],'#67607D',2);line(c,[(1048,438),(1288,581)],'#67607D',2)
- for j in range(7):
-  y=447+j*j*3;rect(c,1035-j*.5,y,2+j,2+j,ORANGE)
- # Street lights and low-poly car.
- for x,y in [(780,430),(1285,432),(893,439),(1183,439)]:
-  rect(c,x,y-96,4,96,'#131725');rect(c,x-23,y-98,30,4,'#131725');rect(c,x-24,y-95,16,4,'#D9C6A5')
- poly(c,[(1002,498),(1015,478),(1062,478),(1081,498),(1087,523),(994,523)],'#111521')
- rect(c,1017,484,40,12,'#6E7188');rect(c,999,506,16,5,'#FFB076');rect(c,1067,506,16,5,'#FFB076')
- rect(c,1026,515,29,3,'#A9A1A5')
- rect(c,700,564,660,17,BG)
- for x in range(710,1360,12):rect(c,x,564,4,17,'#282335')
+PROJECT='radmir'
+RAD=PROJECT=='radmir'
+ACC='#82A492' if RAD else '#D77C60'
+PAPER='#F5F1E9';INK='#292824';DARK='#191918';MUT='#8F8B82';BORDER='#D8D1C5'
+TITLE='RADMIR' if RAD else 'ARIZONA'
+PIX={
+'A':['01110','11011','11011','11111','11011','11011','11011'],
+'R':['11110','11011','11011','11110','11100','11010','11011'],
+'I':['111','010','010','010','010','010','111'],
+'Z':['11111','00011','00110','01100','11000','11000','11111'],
+'O':['01110','11011','11011','11011','11011','11011','01110'],
+'N':['11001','11101','11101','11011','11011','11001','11001'],
+'D':['11110','11011','11011','11011','11011','11011','11110'],
+'M':['11011','11111','11111','11011','11011','11011','11011'],
+'L':['11000','11000','11000','11000','11000','11000','11111'],
+'U':['11011','11011','11011','11011','11011','11011','01110'],
+'X':['11011','11011','01110','00100','01110','11011','11011'],
+'B':['11110','11011','11011','11110','11011','11011','11110']}
+def color(c,h):c.set_source_rgb(*(int(h[i:i+2],16)/255 for i in (1,3,5)))
+def box(c,x,y,w,h,co,r=0):
+ color(c,co)
+ if r:
+  c.new_sub_path()
+  for a,b,ang in [(x+w-r,y+r,-90),(x+w-r,y+h-r,0),(x+r,y+h-r,90),(x+r,y+r,180)]:c.arc(a,b,r,math.radians(ang),math.radians(ang+90))
+  c.close_path()
+ else:c.rectangle(x,y,w,h)
+ c.fill()
+def txt(c,s,x,y,z=20,co=INK,font='DejaVu Sans',bold=False):
+ c.select_font_face(font,0,cairo.FONT_WEIGHT_BOLD if bold else cairo.FONT_WEIGHT_NORMAL);c.set_font_size(z);color(c,co);c.move_to(x,y);c.show_text(s)
+def rule(c,x,y,w,co=BORDER):box(c,x,y,w,1,co)
+def pixel(c,s,x,y,u=10):
+ for letter in s:
+  rows=PIX.get(letter)
+  if not rows:x+=u*3;continue
+  for j,row in enumerate(rows):
+   for i,v in enumerate(row):
+    if v=='1':
+     box(c,x+i*u+2,y+j*u+3,u-1,u-1,'#724B40' if not RAD else '#435C4F')
+     box(c,x+i*u,y+j*u,u-1,u-1,ACC)
+  x+=(len(rows[0])+1)*u
+
+def fan(c,x,y,scale=1):
+ for angle,dx,dy,label in [(-14,-105,20,'SYSTEM'),(13,108,18,'CLIENT'),(0,0,0,'LINUX')]:
+  c.save();c.translate(x+dx*scale,y+dy*scale);c.rotate(math.radians(angle));c.scale(scale,scale)
+  box(c,-106,-130,212,270,'#10100F',16);box(c,-102,-126,204,262,'#302E2A',14)
+  box(c,-80,-101,8,8,ACC,4);txt(c,label,-61,-91,12,'#C6BFB2','DejaVu Sans Mono')
+  rule(c,-80,-73,160,'#45423C')
+  for yy,ww in [(-43,132),(-20,112),(3,126)]:box(c,-72,yy,ww,7,'#777166',3)
+  for xx in [-73,-19,35]:box(c,xx,47,43,43,'#48443D',7)
+  box(c,-72,108,142,3,ACC,1);c.restore()
+def terminal(c,x,y,w,h):
+ box(c,x,y,w,h,DARK,15);box(c,x,y,w,39,'#2A2926',15);box(c,x,y+25,w,14,'#2A2926')
+ for i,co in enumerate(['#D77C60','#D3B97B','#82A492']):
+  color(c,co);c.arc(x+22+i*20,y+20,5,0,math.tau);c.fill()
+ txt(c,'anrhangels / '+PROJECT,x+100,y+25,12,'#AAA398','DejaVu Sans Mono')
 def hero(c):
- rect(c,0,0,1400,660,BG);text(c,'ANRHANGELS  /  LINUX RP SERIES',42,37,13,MUTED,'Nimbus Mono PS');text(c,'INSTALL RECORD  02',1145,37,13,ORANGE,'Nimbus Mono PS');line(c,[(42,57),(1358,57)],'#40344A')
- scene(c)
- text(c,'RADMIR',42,178,102,INK,'Nimbus Sans Narrow',True);text(c,'НА LINUX.',42,279,102,ORANGE,'Nimbus Sans Narrow',True)
- rect(c,44,315,35,3,ORANGE);text(c,'Новая графика. Музыка. Свой город.',42,362,27,INK)
- text(c,'Официальный клиент. Понятная установка.',42,408,20,MUTED);text(c,'Готовые исправления. Твой следующий запуск.',42,438,20,MUTED)
- for x,title,desc in [(43,'01 / ПОДГОТОВИТЬ','Flatpak + Faugus'),(270,'02 / НАСТРОИТЬ','Библиотеки + шрифты'),(490,'03 / ИГРАТЬ','Лаунчер + игра')]:
-  text(c,title,x,519,12,ORANGE,'Nimbus Mono PS');text(c,desc,x,547,18,INK)
- line(c,[(42,595),(1358,595)],'#40344A');text(c,'RADMIR CRMP  ×  GE-PROTON  ×  FAUGUS',42,632,14,MUTED,'Nimbus Mono PS');text(c,'РУССКИЕ ИНСТРУКЦИИ / ОТКРЫТЫЙ КОД',943,632,13,MUTED,'Nimbus Mono PS')
+ box(c,0,0,1440,760,PAPER)
+ txt(c,'LINUX / RP',48,39,13,INK,'DejaVu Sans Mono',True)
+ txt(c,'ANRHANGELS     /     FIELD NOTES  '+('02' if RAD else '01'),968,39,12,MUT,'DejaVu Sans Mono');rule(c,48,60,1344)
+ txt(c,'Свой город.',48,131,53,INK,'DejaVu Serif');txt(c,'Своя система.' if RAD else 'Свои правила.',48,193,53,INK,'DejaVu Serif')
+ box(c,1196,91,196,35,ACC,17);txt(c,'RADMIR CRMP' if RAD else 'ARIZONA RP',1216,114,14,DARK,'DejaVu Sans Mono',True)
+ txt(c,'Установка и настройка на Linux',960,182,19,INK)
+ terminal(c,48,231,1344,438)
+ txt(c,'$ ./install.sh',80,307,17,'#C2B9A9','DejaVu Sans Mono')
+ pixel(c,TITLE,80,339,12 if RAD else 11)
+ txt(c,'НА LINUX',81,487,35,PAPER,'DejaVu Sans Mono',True)
+ txt(c,'Библиотеки. Музыка. Удобный запуск.' if RAD else 'Лаунчер. Шрифты. Удобный запуск.',81,538,22,'#C0B8AA')
+ box(c,81,583,261,39,ACC,5);txt(c,'ИНСТРУКЦИИ + СКРИПТЫ',97,608,14,DARK,'DejaVu Sans Mono',True)
+ fan(c,1126,462,.94)
+ txt(c,'01 — ПОДГОТОВИТЬ     02 — НАСТРОИТЬ     03 — ЗАПУСТИТЬ',48,717,15,INK,'DejaVu Sans Mono')
+ txt(c,'OPEN SOURCE / RU',1200,717,13,MUT,'DejaVu Sans Mono')
 def route(c):
- rect(c,0,0,1400,290,BG);text(c,'КАРТА МАРШРУТА',35,42,17,ORANGE,'Nimbus Mono PS');text(c,'От чистого окружения до первого входа.',35,77,24)
- for i,(name,desc) in enumerate([('СИСТЕМА','Flatpak · шрифты'),('НАСТРОЙКА','Proton · библиотеки'),('ЛАУНЧЕР','Официальный EXE'),('ТВОЙ СЕРВЕР','Загрузка клиента · вход')]):
-  x=48+i*344;line(c,[(x+16,134),(min(1362,x+344),134)],'#4A3A56',2);circle(c,x+12,134,12,ORANGE if i<3 else TEAL);text(c,str(i+1),x+7,139,14,BG,'Nimbus Mono PS',True)
-  text(c,name,x,186,22,INK,'Nimbus Sans Narrow',True);text(c,desc,x,221,16,MUTED)
- text(c,'Скрипт готовит окружение. Официальный лаунчер загружает игру. В аккаунт входишь ты.',35,267,15,MUTED)
-def fixes(c):
- rect(c,0,0,1400,315,BG);text(c,'ГРАФИКА. МУЗЫКА. УДОБНЫЙ ЗАПУСК.',36,52,33,INK,'Nimbus Sans Narrow',True)
- text(c,'НАСТРОЙКИ ДЛЯ RADMIR CRMP',36,85,14,ORANGE,'Nimbus Mono PS')
- for x,label,sample,co in [(36,'БИБЛИОТЕКИ','Новая графика',ORANGE),(497,'АДРЕСА МУЗЫКИ','Кириллица в URL',TEAL),(958,'ОДНА КОМАНДА','radmir',LILAC)]:
-  rect(c,x,115,407,148,'#201C2C');text(c,label,x+19,145,12,co,'Nimbus Mono PS');text(c,sample,x+19,208,32,INK,'Nimbus Sans',True)
- text(c,'UCRT / D3DX9 / D3DCompiler',55,240,13,MUTED)
- text(c,'Локальный помощник на время игры',516,240,13,MUTED)
- text(c,'Лаунчер, журнал и возврат настроек',977,240,13,MUTED)
- text(c,'Авторская схема компонентов; не скриншот игрового интерфейса.',36,298,13,MUTED)
-for name,width,height,fn in [('hero',1400,660,hero),('route',1400,290,route),('fixes',1400,315,fixes)]:
- for fmt in ['svg','png']:
-  surface=cairo.SVGSurface(str(P/f'{name}.svg'),width,height) if fmt=='svg' else cairo.ImageSurface(cairo.FORMAT_RGB24,width,height)
-  fn(cairo.Context(surface))
-  if fmt=='png':surface.write_to_png(str(P/f'{name}.png'))
-  surface.finish()
-print('Original illustrations rendered: hero, route, fixes')
+ box(c,0,0,1440,410,PAPER);txt(c,'От системы к игре.',42,66,39,INK,'DejaVu Serif')
+ txt(c,'ПОРЯДОК УСТАНОВКИ',1120,58,13,MUT,'DejaVu Sans Mono')
+ names=[('Система','Flatpak и Faugus','Подготовить окружение'),('Компоненты','Proton и библиотеки','Добавить зависимости'),('Лаунчер','С официального сайта','Загрузить клиент'),('Первый вход','Ваш аккаунт','Запустить игру')]
+ for i,(name,sub,desc) in enumerate(names):
+  x=42+i*346;box(c,x,103,318,246,'#E9E3D8',10)
+  txt(c,'0'+str(i+1),x+22,144,16,ACC,'DejaVu Sans Mono',True);rule(c,x+22,165,274,'#CEC6B8')
+  txt(c,name,x+22,212,27,INK,'DejaVu Serif');txt(c,sub,x+22,252,18,INK);txt(c,desc,x+22,317,14,'#706B61')
+ txt(c,'СКРИПТ НАСТРАИВАЕТ ОКРУЖЕНИЕ · ОФИЦИАЛЬНЫЙ ЛАУНЧЕР ЗАГРУЖАЕТ ИГРУ',42,387,13,MUT,'DejaVu Sans Mono')
+def detail(c):
+ box(c,0,0,1440,460,DARK)
+ txt(c,'Детали имеют значение.',42,67,39,PAPER,'DejaVu Serif')
+ txt(c,'RADMIR / КОМПОНЕНТЫ' if RAD else 'ARIZONA / ТИПОГРАФИКА',42,103,13,ACC,'DejaVu Sans Mono')
+ cards=[('01 / ГРАФИКА','Новая графика','UCRT · D3DX9 · D3DCompiler'),('02 / МУЗЫКА','Кириллица в URL','Помощник на время игры'),('03 / ЗАПУСК','radmir','Одна команда для лаунчера')] if RAD else [('01 / ТЕКСТ','Привет, мир.','Кириллица и латиница'),('02 / ШРИФТЫ','Aa Бб 123','DejaVu · опционально Segoe UI'),('03 / СИМВОЛЫ',':)  ♥  ★','Noto Color Emoji')]
+ for i,(label,sample,desc) in enumerate(cards):
+  x=42+i*459;box(c,x,143,437,244,'#2C2A26',12);txt(c,label,x+24,181,13,ACC,'DejaVu Sans Mono')
+  rule(c,x+24,202,389,'#47433C');txt(c,sample,x+24,269,34,PAPER,'DejaVu Serif')
+  txt(c,desc,x+24,352,15,'#B5AC9D')
+ txt(c,'КОМПОНЕНТЫ И НАСТРОЙКИ ОПИСАНЫ В ДОКУМЕНТАЦИИ',42,431,13,'#9B9386','DejaVu Sans Mono')
+for name,w,h,fn in [('hero',1440,760,hero),('route',1440,410,route),('fixes' if RAD else 'fonts',1440,460,detail)]:
+ for ext in ['svg','png']:
+  s=cairo.SVGSurface(str(P/(name+'.svg')),w,h) if ext=='svg' else cairo.ImageSurface(cairo.FORMAT_ARGB32,w,h)
+  fn(cairo.Context(s))
+  if ext=='png':s.write_to_png(str(P/(name+'.png')))
+  s.finish()

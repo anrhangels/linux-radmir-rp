@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/hero.png" alt="Radmir на Linux — авторская иллюстрация ночного города" width="100%"></p>
+<p align="center"><img src="assets/hero.png" alt="Radmir CRMP на Linux — терминал и авторские карточки" width="100%"></p>
 
 <p align="center">
   <a href="#установка"><b>Установить игру</b></a> ·
